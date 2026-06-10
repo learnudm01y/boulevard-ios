@@ -1,4 +1,4 @@
-﻿name: Upload IPA to App Store
+name: Upload IPA to App Store
 
 on:
   workflow_dispatch: # تشغيل يدوي بضغطة زر
@@ -15,16 +15,25 @@ jobs:
           mkdir -p ~/.private_keys
           echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_TD923SJ934.p8
 
-      - name: Bypass macOS Security & Accept Terms
+      - name: Force Bypass macOS Gatekeeper
         run: |
-          # كسر حظر أداة آبل وتخطي فحص Gatekeeper السحابي
-          sudo xattr -rd com.apple.quarantine "$(xcode-select -p)/../Applications/Transporter.app" || true
-          # قبول شروط الاستخدام للأداة بشكل صامت لضمان عدم الوقوف
-          xcrun itmsTransporter -version || true
+          # تحديد المسار المباشر للأداة داخل حزمة Xcode
+          TRANSPORTER_PATH="/Applications/Xcode.app/Contents/SharedFrameworks/ContentDeliveryServices.framework/Versions/A/itms/bin/iTMSTransporter"
+          
+          if [ -f "$TRANSPORTER_PATH" ]; then
+            echo "Transporter found at Xcode path. Unquarantining..."
+            sudo xattr -rd com.apple.quarantine "$TRANSPORTER_PATH" || true
+            sudo chmod +x "$TRANSPORTER_PATH" || true
+          else
+            echo "Checking alternative standalone path..."
+            STANDALONE_PATH="$(xcode-select -p)/../Applications/Transporter.app"
+            sudo xattr -rd com.apple.quarantine "$STANDALONE_PATH" || true
+          fi
 
-      - name: Run Apple Transporter
+      - name: Run Apple Transporter (Absolute Path)
         run: |
-          xcrun itmsTransporter -m upload \
+          # محاولة تشغيل الأداة عبر مسارها المباشر لضمان تخطي قيد الحظر (-10814)
+          /Applications/Xcode.app/Contents/SharedFrameworks/ContentDeliveryServices.framework/Versions/A/itms/bin/iTMSTransporter -m upload \
             -apiKey "TD923SJ934" \
             -apiIssuer "6f8de379-0671-4294-b5b8-0a41c4099020" \
             -f "./App.ipa"
