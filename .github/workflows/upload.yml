@@ -12,50 +12,15 @@ jobs:
 
       - name: Prepare Apple Private Key
         run: |
-          mkdir -p ~/.private_keys
-          echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_TD923SJ934.p8
+          # تجهيز المجلد الرسمي الذي تبحث فيه أدوات آبل تلقائياً عن المفاتيح
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.appstoreconnect/private_keys/AuthKey_TD923SJ934.p8
 
-      - name: Generate Package & Upload via Direct Java Binary
-        shell: pwsh
+      - name: Upload IPA via Native altool
         run: |
-          # 1. تعريف المسارات داخل السيرفر
-          $ipaPath = "./App.ipa"
-          $itmspDir = "./6778919939.itmsp"
-
-          # 2. إنشاء المجلد المغلف لحزمة آبل
-          if (-not (Test-Path $itmspDir)) { New-Item -ItemType Directory -Path $itmspDir | Out-Null }
-
-          # 3. نسخ ملف الـ IPA إلى داخل الحزمة
-          Copy-Item $ipaPath -Destination "$itmspDir/App.ipa"
-
-          # 4. حساب حجم الملف والـ MD5 بدقة
-          $fileSize = (Get-Item "$itmspDir/App.ipa").Length
-          $md5Hash = (Get-FileHash "$itmspDir/App.ipa" -Algorithm MD5).Hash.ToLower()
-
-          # 5. توليد ملف الـ metadata.xml الخاص بـ Boulevard
-          $xmlContent = @"
-          <?xml version="1.0" encoding="UTF-8"?>
-          <package xmlns="http://apple.com/itunes/importer" version="software5.4">
-              <software_assets apple_id="6778919939">
-                  <asset type="bundle">
-                      <data_file>
-                          <file_name>App.ipa</file_name>
-                          <size>$fileSize</size>
-                          <checksum type="md5">$md5Hash</checksum>
-                      </data_file>
-                  </asset>
-              </software_assets>
-          </package>
-          "@
-
-          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-          [System.IO.File]::WriteAllText("$itmspDir/metadata.xml", $xmlContent, $utf8NoBom)
-
-          Write-Host "📦 Package .itmsp created successfully!"
-          Write-Host "🚀 Bypassing macOS Launcher... Running Transporter via direct Java Core..."
-
-          # 6. الرفع القسري عبر الـ Java Executable المدمج لتخطي الـ Gatekeeper والخطأ -10814
-          $javaExec = "/Applications/Xcode.app/Contents/SharedFrameworks/ContentDeliveryServices.framework/Versions/A/itms/java/bin/java"
-          $jarPath = "/Applications/Xcode.app/Contents/SharedFrameworks/ContentDeliveryServices.framework/Versions/A/itms/share/itms/iTMSTransporter.jar"
-
-          & $javaExec -jar $jarPath -m upload -apiKey "TD923SJ934" -apiIssuer "6f8de379-0671-4294-b5b8-0a41c4099020" -f $itmspDir
+          # استخدام أداة آبل الأصلية لرفع التطبيقات مباشرة بدون أي وسيط جافا
+          xcrun altool --upload-app \
+            -f "./App.ipa" \
+            -t ios \
+            --apiKey "TD923SJ934" \
+            --apiIssuer "6f8de379-0671-4294-b5b8-0a41c4099020"
