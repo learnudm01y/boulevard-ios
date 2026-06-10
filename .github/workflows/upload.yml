@@ -1,0 +1,23 @@
+﻿name: Upload IPA to App Store
+
+on:
+  workflow_dispatch: # تشغيل يدوي بضغطة زر
+
+jobs:
+  upload_to_apple:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare Apple Private Key
+        run: |
+          mkdir -p ~/.private_keys
+          echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_TD923SJ934.p8
+
+      - name: Run Apple Transporter
+        run: |
+          xcrun itmsTransporter -m upload \
+            -apiKey "TD923SJ934" \
+            -apiIssuer "6f8de379-0671-4294-b5b8-0a41c4099020" \
+            -f "./App.ipa"
