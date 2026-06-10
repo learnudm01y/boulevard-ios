@@ -1,4 +1,4 @@
-﻿name: Upload IPA to App Store
+name: Upload IPA to App Store
 
 on:
   workflow_dispatch: # تشغيل يدوي بضغطة زر
@@ -12,19 +12,15 @@ jobs:
 
       - name: Prepare Apple Private Key
         run: |
-          mkdir -p ~/.private_keys
-          echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_TD923SJ934.p8
+          # تجهيز المجلد الرسمي الذي تبحث فيه أدوات آبل تلقائياً عن المفاتيح
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.appstoreconnect/private_keys/AuthKey_TD923SJ934.p8
 
-      - name: Bypass macOS Security & Accept Terms
+      - name: Upload IPA via Native altool
         run: |
-          # كسر حظر أداة آبل وتخطي فحص Gatekeeper السحابي
-          sudo xattr -rd com.apple.quarantine "$(xcode-select -p)/../Applications/Transporter.app" || true
-          # قبول شروط الاستخدام للأداة بشكل صامت لضمان عدم الوقوف
-          xcrun itmsTransporter -version || true
-
-      - name: Run Apple Transporter
-        run: |
-          xcrun itmsTransporter -m upload \
-            -apiKey "TD923SJ934" \
-            -apiIssuer "6f8de379-0671-4294-b5b8-0a41c4099020" \
-            -f "./App.ipa"
+          # استخدام أداة آبل الأصلية لرفع التطبيقات مباشرة بدون أي وسيط جافا
+          xcrun altool --upload-app \
+            -f "./App.ipa" \
+            -t ios \
+            --apiKey "TD923SJ934" \
+            --apiIssuer "6f8de379-0671-4294-b5b8-0a41c4099020"
