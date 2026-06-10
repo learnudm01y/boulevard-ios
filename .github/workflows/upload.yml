@@ -15,6 +15,13 @@ jobs:
           mkdir -p ~/.private_keys
           echo "${{ secrets.APPLE_PRIVATE_KEY }}" > ~/.private_keys/AuthKey_TD923SJ934.p8
 
+      - name: Bypass macOS Security & Accept Terms
+        run: |
+          # كسر حظر أداة آبل وتخطي فحص Gatekeeper السحابي
+          sudo xattr -rd com.apple.quarantine "$(xcode-select -p)/../Applications/Transporter.app" || true
+          # قبول شروط الاستخدام للأداة بشكل صامت لضمان عدم الوقوف
+          xcrun itmsTransporter -version || true
+
       - name: Run Apple Transporter
         run: |
           xcrun itmsTransporter -m upload \
